@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Hayate (疾風) - Lore</title>
+
+  <!-- Fontes estilo 8-bit / pixel art -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+  <style>
+    /* =========================================
+1. VARIÁVEIS & RESET BÁSICO
+    ========================================= */
+    :root {
+      color-scheme: dark;
+      --bg: #000000;
+      --ink: #ffffff;
+      --mute: #888888;
+      --soul: #ff0000;
+      --accent: #ffff00;
+      --border: #ffffff;
+
+      --font-pixel: "Press Start 2P", monospace;
+      --font-dialog: "VT323", monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-dialog);
+      font-size: 1.45rem;
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: none;
+    }
+
+    /* =========================================
+2. FUNDO & BARRA DE PROGRESSO NO TOPO
+    ========================================= */
+    #bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: var(--accent);
+      transform-origin: 0 50%;
+      transform: scaleX(0);
+      z-index: 20;
+      box-shadow: 0 0 8px rgba(255, 255, 0, 0.5);
+    }
+
+    /* Controle de OST + Volume Slider estilo pixel art */
+    .bgm-dock {
+      position: fixed;
+      right: 1.5rem;
+      bottom: 1.5rem;
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: #000000;
+      border: 3px solid var(--border);
+      padding: 0.35rem 0.7rem;
+      transition: border-color 0.2s ease;
+    }
+
+    .bgm-dock.playing {
+      border-color: var(--accent);
+    }
+
+    #bgm-toggle {
+      all: unset;
+      cursor: pointer;
+      color: var(--ink);
+      font-family: var(--font-dialog);
+      font-size: 1.2rem;
+      line-height: 1.1;
+      transition: color 0.2s ease;
+    }
+
+    #bgm-toggle:hover,
+    #bgm-toggle:focus-visible,
+    .bgm-dock.playing #bgm-toggle {
+      color: var(--accent);
+    }
+
+    .vol-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-dialog);
+      font-size: 1.05rem;
+      color: var(--mute);
+    }
+
+    #bgm-volume {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 78px;
+      height: 8px;
+      background: #262626;
+      border: 2px solid var(--border);
+      cursor: pointer;
+    }
+
+    #bgm-volume::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 16px;
+      background: var(--accent);
+      border: 2px solid #000000;
+      cursor: pointer;
+    }
+
+    #bgm-volume::-moz-range-thumb {
+      width: 12px;
+      height: 16px;
+      background: var(--accent);
+      border: 2px solid #000000;
+      border-radius: 0;
+      cursor: pointer;
+    }
+
+    #vol-readout {
+      min-width: 2.6rem;
+      text-align: right;
+      color: var(--ink);
+    }
+
+    @media (max-width: 600px) {
+      .bgm-dock {
+        right: 0.9rem;
+        bottom: 0.9rem;
+        gap: 0.45rem;
+        padding: 0.3rem 0.55rem;
+      }
+
+      #bgm-volume {
+        width: 58px;
+      }
+    }
+
+    /* =========================================
+3. NAVEGAÇÃO LATERAL INTERATIVA (ATOS)
+    ========================================= */
+    .act-rail {
+      position: fixed;
+      left: clamp(1rem, 3vw, 2.4rem);
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 15;
+      display: flex;
+      flex-direction: column;
+      gap: 1.4rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+    }
+
+    body.past-hero .act-rail {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .act-rail button {
+      all: unset;
+      cursor: pointer;
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      color: var(--mute);
+      font-family: var(--font-pixel);
+      font-size: 1.1rem;
+      padding: 0.35rem;
+      transition: color 0.3s ease, transform 0.2s ease;
+    }
+
+    .act-rail button::before {
+      content: "♥";
+      color: var(--soul);
+      font-size: 0.85rem;
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .act-rail button:hover,
+    .act-rail button:focus-visible {
+      color: var(--ink);
+      transform: translateX(3px);
+    }
+
+    .act-rail button:hover::before,
+    .act-rail button.on::before {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .act-rail button.on {
+      color: var(--accent);
+    }
+
+    .act-rail button .label {
+      position: absolute;
+      left: 2.8rem;
+      font-family: var(--font-dialog);
+      font-size: 1.25rem;
+      color: var(--ink);
+      background: #000000;
+      border: 2px solid var(--border);
+      padding: 0.1rem 0.55rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .act-rail button:hover .label,
+    .act-rail button:focus-visible .label {
+      opacity: 1;
+    }
+
+    @media (max-width: 900px) {
+      .act-rail {
+        display: none;
+      }
+    }
+
+    /* =========================================
+4. EMBLEMA DA LÓTUS DETALHADA (32x32 PIXEL ART)
+    ========================================= */
+    .flower-emblem {
+      position: relative;
+      z-index: 12;
+      pointer-events: none;
+      width: 116px;
+      margin: 0 auto 0.25rem;
+    }
+
+    body.past-hero .flower-emblem {
+      position: fixed;
+      top: 1.2rem;
+      right: 1.5rem;
+      left: auto;
+      width: 92px;
+      margin: 0;
+      animation: cornerPop 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes cornerPop {
+      0% {
+        opacity: 0;
+        transform: translateY(-16px) scale(0.82);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .flower-emblem svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      shape-rendering: crispEdges;
+      overflow: visible;
+    }
+
+    .f-stage {
+      opacity: 0;
+      transform-box: fill-box;
+      transform-origin: 50% 65%;
+      transform: scale(0.75);
+      transition: opacity 0.65s ease, transform 0.85s cubic-bezier(0.22, 1, 0.36, 1), filter 0.8s ease;
+    }
+
+    body[data-stage="0"] .stage-0 {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    body[data-stage="1"] .stage-1 {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    body[data-stage="2"] .stage-2 {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    body[data-stage="3"] .stage-3 {
+      opacity: 1;
+      transform: scale(1);
+      filter: drop-shadow(0 0 10px rgba(244, 114, 182, 0.55));
+    }
+
+    /* =========================================
+5. ESTRUTURA PRINCIPAL DA HISTÓRIA
+    ========================================= */
+    main {
+      position: relative;
+      z-index: 2;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 6rem;
+    }
+
+    #hero {
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    #hero h1 {
+      font-family: var(--font-pixel);
+      font-size: clamp(1.6rem, 5vw, 3rem);
+      line-height: 1.4;
+      margin: 0 0 1rem;
+      text-transform: uppercase;
+    }
+
+    #hero .subtitle {
+      color: var(--mute);
+      font-size: 1.5rem;
+      margin: 0 0 1.4rem;
+    }
+
+    .flower-slot {
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ut-box {
+      border: 4px solid var(--border);
+      background-color: #000000;
+      padding: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .ut-box p {
+      margin: 0 0 1rem;
+    }
+
+    .ut-box p:last-child {
+      margin-bottom: 0;
+    }
+
+    .chapter {
+      padding-top: 16vh;
+      min-height: 85vh;
+    }
+
+    .chapter h2 {
+      font-family: var(--font-pixel);
+      font-size: clamp(1.1rem, 3vw, 1.55rem);
+      color: var(--accent);
+      margin: 0 0 1.5rem;
+    }
+
+    footer {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      color: var(--mute);
+      padding: 2rem 1rem 4rem;
+      font-size: 1.1rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+    }
+  </style>
+</head>
+<body data-stage="0">
+
+  <!-- Barra de progresso amarela no topo -->
+  <div id="progress-bar" aria-hidden="true"></div>
+
+  <!-- Fundo de partículas lento -->
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+  <!-- Controle de OST dinâmica + volume -->
+  <div class="bgm-dock" id="bgm-dock">
+    <button id="bgm-toggle" type="button" aria-pressed="false">♪ OST: OFF</button>
+    <label class="vol-wrap" for="bgm-volume">
+      <span>VOL</span>
+      <input id="bgm-volume" type="range" min="0" max="150" step="5" value="70" aria-label="Volume da OST">
+      <span id="vol-readout">70%</span>
+    </label>
+  </div>
+
+  <!-- Menu lateral interativo dos Atos -->
+  <nav class="act-rail" aria-label="Navegação dos Atos">
+    <button data-go="cap-1" data-act="1" aria-label="Act I">
+      芽<span class="label">* Act I — O Broto</span>
+    </button>
+    <button data-go="cap-2" data-act="2" aria-label="Act II">
+      蕾<span class="label">* Act II — O Miolo</span>
+    </button>
+    <button data-go="cap-3" data-act="3" aria-label="Act III">
+      花<span class="label">* Act III — A Lótus</span>
+    </button>
+  </nav>
+
+  <!-- Conteúdo Principal -->
+  <main>
+    <!-- CAPA -->
+    <section id="hero" data-beat data-stage="0" data-act="0">
+      <h1>Hayate (疾風)</h1>
+      <p class="subtitle">* A flower needs it's sunlight in order to survive.</p>
+
+      <div class="flower-slot" id="flower-anchor">
+        <div class="flower-emblem" aria-hidden="true">
+          <!--
+            Paleta inspirada na foto da flor de lótus:
+- Rosa escuro (bordas/sombras): #c93b6b / #e05a87
+- Rosa médio (pétalas): #f28cb1
+- Rosa claro / base clara: #fbc7da / #ffe8f0
+- Miolo dourado: #facc15 / #eab308 / #a16207
+- Folha/caule: #2f7d4a / #48a868
+          -->
+          <svg viewBox="0 0 32 32">
+            <!-- ESTÁGIO 0 (Capa): Pequena semente/broto no centro -->
+            <g class="f-stage stage-0">
+              <rect fill="#2f7d4a" x="15" y="17" width="2" height="3"/>
+              <rect fill="#48a868" x="14" y="15" width="4" height="3"/>
+              <rect fill="#f28cb1" x="15" y="13" width="2" height="2"/>
+            </g>
+
+            <!-- ESTÁGIO 1 (Act I): Broto abrindo com folhas verdes ao redor -->
+            <g class="f-stage stage-1">
+              <!-- Folhas verdes externas -->
+              <rect fill="#2f7d4a" x="9" y="18" width="5" height="3"/>
+              <rect fill="#48a868" x="10" y="17" width="4" height="3"/>
+              <rect fill="#2f7d4a" x="18" y="18" width="5" height="3"/>
+              <rect fill="#48a868" x="18" y="17" width="4" height="3"/>
+              <rect fill="#2f7d4a" x="13" y="21" width="6" height="2"/>
+
+              <!-- Botão rosa nascendo no meio -->
+              <rect fill="#c93b6b" x="15" y="10" width="2" height="2"/>
+              <rect fill="#e05a87" x="14" y="12" width="4" height="2"/>
+              <rect fill="#f28cb1" x="13" y="14" width="6" height="4"/>
+              <rect fill="#fbc7da" x="14" y="14" width="4" height="3"/>
+              <rect fill="#facc15" x="15" y="16" width="2" height="2"/>
+            </g>
+
+            <!-- ESTÁGIO 2 (Act II): Miolo dourado + primeira coroa de pétalas -->
+            <g class="f-stage stage-2">
+              <!-- Folha verde de fundo -->
+              <rect fill="#2f7d4a" x="7" y="19" width="18" height="3"/>
+              <rect fill="#48a868" x="9" y="18" width="14" height="2"/>
+
+              <!-- Pétalas laterais e superiores -->
+              <!-- Topo -->
+              <rect fill="#c93b6b" x="15" y="6" width="2" height="2"/>
+              <rect fill="#e05a87" x="14" y="8" width="4" height="2"/>
+              <rect fill="#f28cb1" x="13" y="10" width="6" height="5"/>
+              <rect fill="#fbc7da" x="14" y="10" width="4" height="4"/>
+
+              <!-- Esquerda -->
+              <rect fill="#c93b6b" x="8" y="13" width="2" height="2"/>
+              <rect fill="#e05a87" x="9" y="12" width="3" height="4"/>
+              <rect fill="#f28cb1" x="10" y="14" width="4" height="4"/>
+              <rect fill="#fbc7da" x="11" y="14" width="3" height="3"/>
+
+              <!-- Direita -->
+              <rect fill="#c93b6b" x="22" y="13" width="2" height="2"/>
+              <rect fill="#e05a87" x="20" y="12" width="3" height="4"/>
+              <rect fill="#f28cb1" x="18" y="14" width="4" height="4"/>
+              <rect fill="#fbc7da" x="18" y="14" width="3" height="3"/>
+
+              <!-- Base clara -->
+              <rect fill="#ffe8f0" x="12" y="18" width="8" height="2"/>
+
+              <!-- Miolo dourado -->
+              <rect fill="#a16207" x="14" y="15" width="4" height="3"/>
+              <rect fill="#eab308" x="14" y="15" width="4" height="2"/>
+              <rect fill="#facc15" x="15" y="15" width="2" height="1"/>
+            </g>
+
+            <!-- ESTÁGIO 3 (Act III): Flor de Lótus completa em camadas -->
+            <g class="f-stage stage-3">
+              <!-- Folhas verdes largas ao fundo (como na foto) -->
+              <rect fill="#1f5c35" x="4" y="18" width="24" height="6"/>
+              <rect fill="#2f7d4a" x="5" y="16" width="22" height="6"/>
+              <rect fill="#48a868" x="7" y="15" width="18" height="3"/>
+
+              <!-- Pétala superior central -->
+              <rect fill="#c93b6b" x="15" y="3" width="2" height="2"/>
+              <rect fill="#e05a87" x="14" y="5" width="4" height="2"/>
+              <rect fill="#f28cb1" x="13" y="7" width="6" height="6"/>
+              <rect fill="#fbc7da" x="14" y="7" width="4" height="5"/>
+              <rect fill="#ffe8f0" x="15" y="10" width="2" height="3"/>
+
+              <!-- Pétalas superiores diagonais (esq e dir) -->
+              <rect fill="#c93b6b" x="9" y="6" width="2" height="2"/>
+              <rect fill="#e05a87" x="9" y="8" width="3" height="3"/>
+              <rect fill="#f28cb1" x="10" y="10" width="4" height="4"/>
+              <rect fill="#fbc7da" x="11" y="9" width="2" height="4"/>
+
+              <rect fill="#c93b6b" x="21" y="6" width="2" height="2"/>
+              <rect fill="#e05a87" x="20" y="8" width="3" height="3"/>
+              <rect fill="#f28cb1" x="18" y="10" width="4" height="4"/>
+              <rect fill="#fbc7da" x="19" y="9" width="2" height="4"/>
+
+              <!-- Pétalas laterais abertas -->
+              <rect fill="#c93b6b" x="4" y="13" width="3" height="2"/>
+              <rect fill="#e05a87" x="6" y="12" width="4" height="3"/>
+              <rect fill="#f28cb1" x="6" y="14" width="6" height="4"/>
+              <rect fill="#fbc7da" x="8" y="14" width="4" height="3"/>
+              <rect fill="#ffe8f0" x="10" y="16" width="3" height="2"/>
+
+              <rect fill="#c93b6b" x="25" y="13" width="3" height="2"/>
+              <rect fill="#e05a87" x="22" y="12" width="4" height="3"/>
+              <rect fill="#f28cb1" x="20" y="14" width="6" height="4"/>
+              <rect fill="#fbc7da" x="20" y="14" width="4" height="3"/>
+              <rect fill="#ffe8f0" x="19" y="16" width="3" height="2"/>
+
+              <!-- Pétalas inferiores (frente) -->
+              <rect fill="#c93b6b" x="8" y="20" width="4" height="2"/>
+              <rect fill="#e05a87" x="8" y="18" width="5" height="3"/>
+              <rect fill="#f28cb1" x="9" y="17" width="4" height="3"/>
+              <rect fill="#ffe8f0" x="11" y="17" width="3" height="3"/>
+
+              <rect fill="#c93b6b" x="20" y="20" width="4" height="2"/>
+              <rect fill="#e05a87" x="19" y="18" width="5" height="3"/>
+              <rect fill="#f28cb1" x="19" y="17" width="4" height="3"/>
+              <rect fill="#ffe8f0" x="18" y="17" width="3" height="3"/>
+
+              <!-- Pétala central frontal -->
+              <rect fill="#c93b6b" x="14" y="22" width="4" height="2"/>
+              <rect fill="#e05a87" x="13" y="19" width="6" height="3"/>
+              <rect fill="#f28cb1" x="14" y="18" width="4" height="3"/>
+              <rect fill="#ffe8f0" x="14" y="17" width="4" height="2"/>
+
+              <!-- Miolo amarelo com detalhes de sementes (como na foto) -->
+              <rect fill="#a16207" x="13" y="14" width="6" height="4"/>
+              <rect fill="#eab308" x="13" y="13" width="6" height="4"/>
+              <rect fill="#facc15" x="14" y="13" width="4" height="3"/>
+              <!-- Pontinhos das sementes no miolo -->
+              <rect fill="#92400e" x="14" y="14" width="1" height="1"/>
+              <rect fill="#92400e" x="16" y="14" width="1" height="1"/>
+              <rect fill="#92400e" x="15" y="15" width="1" height="1"/>
+              <rect fill="#92400e" x="17" y="15" width="1" height="1"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <div class="ut-box">
+        <p>* Scroll down to know more about Hayate's story...</p>
+      </div>
+    </section>
+
+    <!-- ACT I -->
+    <section class="chapter" id="cap-1" data-beat data-stage="1" data-act="1">
+      <h2>* ACT I — O BROTO</h2>
+      <div class="ut-box">
+        <p>* No começo, havia apenas o vento e uma pequena promessa sob a terra.</p>
+        <p>* Hayate crescia como um broto quieto, esperando cada raio de luz que conseguia alcançar.</p>
+        <p>* Nada parecia urgente. Bastava respirar, ouvir a brisa e acreditar que havia sol suficiente para o dia seguinte.</p>
+      </div>
+    </section>
+
+    <!-- ACT II -->
+    <section class="chapter" id="cap-2" data-beat data-stage="2" data-act="2">
+      <h2>* ACT II — O MIOLO</h2>
+      <div class="ut-box">
+        <p>* Então o céu escureceu de um jeito que não avisa, e o vento deixou de ser apenas brisa.</p>
+        <p>* Cada escolha pesou mais do que parecia, e certas verdades só vieram à tona quando já não dava para voltar atrás.</p>
+        <p>* No silêncio entre uma rajada e outra, ficou a dúvida: o que sobrevive quando tudo ao redor exige demais?</p>
+      </div>
+    </section>
+
+    <!-- ACT III -->
+    <section class="chapter" id="cap-3" data-beat data-stage="3" data-act="3">
+      <h2>* ACT III — A LÓTUS</h2>
+      <div class="ut-box">
+        <p>* A tempestade passou. Não apagou as marcas, mas deixou o ar limpo o bastante para enxergar o próprio caminho.</p>
+        <p>* Entre a lama e a água parada, a lótus abriu sem pressa — não por esquecer o que doeu, mas por finalmente entender o que ficou.</p>
+        <p>* Hayate continua ali, inteiro no que viveu, em paz com o próprio tempo.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>* Feito com DETERMINAÇÃO.</p>
+  </footer>
+
+  <script>
+    (function () {
+      const body = document.body;
+      const progressBar = document.getElementById("progress-bar");
+      const flowerAnchor = document.getElementById("flower-anchor");
+      const railBtns = Array.from(document.querySelectorAll(".act-rail button"));
+      const beats = Array.from(document.querySelectorAll("[data-beat]"));
+      const bgmDock = document.getElementById("bgm-dock");
+      const bgmBtn = document.getElementById("bgm-toggle");
+      const volInput = document.getElementById("bgm-volume");
+      const volReadout = document.getElementById("vol-readout");
+
+      /* 1. Motor de OST leve (sem bass pesado) e distinto por Ato */
+      let audioCtx = null;
+      let masterGain = null;
+      let highpassFilter = null;
+      let lowpassFilter = null;
+      let ostTimer = null;
+      let ostPlaying = false;
+      let currentMood = "act1";
+      let stepIndex = 0;
+      const VOLUME_BOOST = 2.4;
+
+      const N = {
+        F3: 174.61, G3: 196.00, A3: 220.00, Bb3: 233.08, B3: 246.94,
+        C4: 261.63, D4: 293.66, Eb4: 311.13, E4: 329.63, F4: 349.23, Fs4: 369.99, G4: 392.00, Ab4: 415.30, A4: 440.00, Bb4: 466.16, B4: 493.88,
+        C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00
+      };
+
+      const OST_TRACKS = {
+        // ACT I: calmo, leve e luminoso (nascimento da flor)
+        act1: {
+          tempoMs: 680,
+          lowcut: 240,
+          highcut: 1350,
+          attack: 0.14,
+          glide: 0,
+          steps: [
+            { n: N.A4, p: N.F4, len: 1.35, wave: "sine", gain: 0.085 },
+            { n: null, p: null, len: 0.4, wave: "sine", gain: 0 },
+            { n: N.E5, p: N.C4, len: 1.45, wave: "sine", gain: 0.075 },
+            { n: N.C5, p: null, len: 1.1, wave: "triangle", gain: 0.045 },
+            { n: N.D5, p: N.A3, len: 1.4, wave: "sine", gain: 0.08 },
+            { n: N.A4, p: null, len: 1.25, wave: "sine", gain: 0.07 },
+            { n: N.G4, p: N.G3, len: 1.5, wave: "sine", gain: 0.075 }
+          ]
+        },
+
+        // ACT II: tenso e suspenso (sem grave pesado — só médios/agudos inquietos)
+        act2: {
+          tempoMs: 600,
+          lowcut: 290,
+          highcut: 920,
+          attack: 0.03,
+          glide: 0.16,
+          steps: [
+            { n: N.E4, p: null, len: 0.72, wave: "triangle", gain: 0.06 },
+            { n: null, p: null, len: 0.5, wave: "sine", gain: 0 },
+            { n: N.Bb4, p: N.Fs4, len: 0.95, wave: "sine", gain: 0.07 },
+            { n: N.F4, p: null, len: 0.45, wave: "triangle", gain: 0.055 },
+            { n: null, p: null, len: 0.65, wave: "sine", gain: 0 },
+            { n: N.Eb4, p: N.A3, len: 1.05, wave: "sine", gain: 0.065 },
+            { n: N.E4, p: null, len: 0.4, wave: "triangle", gain: 0.055 },
+            { n: null, p: null, len: 0.7, wave: "sine", gain: 0 }
+          ]
+        },
+
+        // ACT III: calmaria após tudo (amplo, limpo e sereno)
+        act3: {
+          tempoMs: 760,
+          lowcut: 230,
+          highcut: 1500,
+          attack: 0.22,
+          glide: 0,
+          steps: [
+            { n: N.G4, p: N.E4, len: 1.75, wave: "sine", gain: 0.085 },
+            { n: N.C5, p: N.G3, len: 1.65, wave: "sine", gain: 0.08 },
+            { n: N.B4, p: null, len: 1.35, wave: "triangle", gain: 0.048 },
+            { n: N.A4, p: N.F4, len: 1.85, wave: "sine", gain: 0.085 },
+            { n: N.E4, p: N.C4, len: 1.6, wave: "sine", gain: 0.078 },
+            { n: N.F4, p: N.A3, len: 1.9, wave: "sine", gain: 0.082 }
+          ]
+        }
+      };
+
+      function getTargetGain() {
+        const pct = volInput ? Number(volInput.value) : 70;
+        return Math.max(0.0001, (pct / 100) * VOLUME_BOOST);
+      }
+
+      function applyVolume(fadeTime = 0.08) {
+        const pct = volInput ? Number(volInput.value) : 70;
+        if (volReadout) volReadout.textContent = pct + "%";
+        if (!audioCtx || !masterGain || !ostPlaying) return;
+        const now = audioCtx.currentTime;
+        masterGain.gain.cancelScheduledValues(now);
+        masterGain.gain.setValueAtTime(Math.max(0.0001, masterGain.gain.value), now);
+        masterGain.gain.exponentialRampToValueAtTime(getTargetGain(), now + fadeTime);
+      }
+
+      function ensureAudio() {
+        if (!audioCtx) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new Ctx();
+
+          highpassFilter = audioCtx.createBiquadFilter();
+          highpassFilter.type = "highpass";
+          highpassFilter.frequency.setValueAtTime(240, audioCtx.currentTime);
+          highpassFilter.Q.setValueAtTime(0.7, audioCtx.currentTime);
+
+          lowpassFilter = audioCtx.createBiquadFilter();
+          lowpassFilter.type = "lowpass";
+          lowpassFilter.frequency.setValueAtTime(1350, audioCtx.currentTime);
+          lowpassFilter.Q.setValueAtTime(1.0, audioCtx.currentTime);
+
+          masterGain = audioCtx.createGain();
+          masterGain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+
+          highpassFilter.connect(lowpassFilter);
+          lowpassFilter.connect(masterGain);
+          masterGain.connect(audioCtx.destination);
+        }
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+      }
+
+      function applyTrackFilters(track) {
+        if (!audioCtx || !highpassFilter || !lowpassFilter) return;
+        const now = audioCtx.currentTime;
+        highpassFilter.frequency.cancelScheduledValues(now);
+        highpassFilter.frequency.exponentialRampToValueAtTime(Math.max(180, track.lowcut), now + 0.5);
+
+        lowpassFilter.frequency.cancelScheduledValues(now);
+        lowpassFilter.frequency.exponentialRampToValueAtTime(Math.max(300, track.highcut), now + 0.5);
+      }
+
+      function triggerVoice(freq, duration, type, peak, attack = 0.08, glide = 0) {
+        if (!freq || !audioCtx || !highpassFilter || peak <= 0) return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const env = audioCtx.createGain();
+
+        osc.type = type;
+        if (glide > 0) {
+          osc.frequency.setValueAtTime(freq * 0.95, now);
+          osc.frequency.exponentialRampToValueAtTime(freq, now + Math.min(duration * 0.6, glide));
+        } else {
+          osc.frequency.setValueAtTime(freq, now);
+        }
+
+        const safeAtk = Math.min(attack, duration * 0.45);
+        env.gain.setValueAtTime(0.0001, now);
+        env.gain.linearRampToValueAtTime(peak, now + safeAtk);
+        env.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        osc.connect(env);
+        env.connect(highpassFilter);
+
+        osc.start(now);
+        osc.stop(now + duration + 0.04);
+      }
+
+      function tickOst() {
+        if (!ostPlaying || !audioCtx) return;
+        const track = OST_TRACKS[currentMood] || OST_TRACKS.act1;
+        applyTrackFilters(track);
+
+        const item = track.steps[stepIndex % track.steps.length];
+        if (item.n) {
+          triggerVoice(item.n, item.len, item.wave, item.gain, track.attack, track.glide);
+        }
+        if (item.p) {
+          triggerVoice(item.p, item.len * 1.15, "sine", item.gain * 0.5, track.attack * 1.4, 0);
+        }
+
+        stepIndex++;
+        ostTimer = setTimeout(tickOst, track.tempoMs);
+      }
+
+      function updateOstButtonLabel() {
+        if (!bgmBtn) return;
+        const moodLabel =
+          currentMood === "act2" ? "ACT II · TENSÃO" :
+          currentMood === "act3" ? "ACT III · CALMARIA" :
+          "ACT I · BROTO";
+        if (bgmDock) bgmDock.classList.toggle("playing", ostPlaying);
+        bgmBtn.setAttribute("aria-pressed", String(ostPlaying));
+        bgmBtn.textContent = ostPlaying ? `♪ OST ON (${moodLabel})` : "♪ OST: OFF";
+      }
+
+      function setOstMoodByAct(actStr) {
+        const nextMood = actStr === "2" ? "act2" : actStr === "3" ? "act3" : "act1";
+        if (nextMood !== currentMood) {
+          currentMood = nextMood;
+          stepIndex = 0;
+          if (ostPlaying && audioCtx) {
+            applyTrackFilters(OST_TRACKS[currentMood]);
+          }
+        }
+        if (ostPlaying) {
+          updateOstButtonLabel();
+        }
+      }
+
+      if (volInput) {
+        volInput.addEventListener("input", () => applyVolume(0.05));
+      }
+
+      if (bgmBtn) {
+        bgmBtn.addEventListener("click", () => {
+          ensureAudio();
+          const now = audioCtx.currentTime;
+
+          if (!ostPlaying) {
+            ostPlaying = true;
+            masterGain.gain.cancelScheduledValues(now);
+            masterGain.gain.setValueAtTime(Math.max(0.0001, masterGain.gain.value), now);
+            masterGain.gain.exponentialRampToValueAtTime(getTargetGain(), now + 0.35);
+            stepIndex = 0;
+            clearTimeout(ostTimer);
+            tickOst();
+          } else {
+            ostPlaying = false;
+            clearTimeout(ostTimer);
+            masterGain.gain.cancelScheduledValues(now);
+            masterGain.gain.setValueAtTime(Math.max(0.0001, masterGain.gain.value), now);
+            masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+          }
+          updateOstButtonLabel();
+        });
+      }
+
+      /* 2. Barra de progresso no topo */
+      function updateProgress() {
+        const scrollMax = document.documentElement.scrollHeight - window.innerHeight;
+        const ratio = scrollMax > 0 ? Math.min(1, Math.max(0, window.scrollY / scrollMax)) : 0;
+        progressBar.style.transform = "scaleX(" + ratio + ")";
+      }
+      window.addEventListener("scroll", updateProgress, { passive: true });
+      updateProgress();
+
+      const anchorObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            const outOfView = !entry.isIntersecting && entry.boundingClientRect.bottom < 0;
+            body.classList.toggle("past-hero", outOfView);
+            if (!outOfView) {
+              body.setAttribute("data-stage", "0");
+            }
+          });
+        },
+        { threshold: 0 }
+      );
+      anchorObserver.observe(flowerAnchor);
+
+      railBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const targetId = btn.getAttribute("data-go");
+          const targetEl = document.getElementById(targetId);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        });
+      });
+
+      function activateBeat(el) {
+        const stage = el.getAttribute("data-stage");
+        const act = el.getAttribute("data-act");
+
+        if (body.classList.contains("past-hero") || stage === "0") {
+          body.setAttribute("data-stage", stage);
+        }
+
+        setOstMoodByAct(act);
+
+        railBtns.forEach((btn) => {
+          btn.classList.toggle("on", btn.getAttribute("data-act") === act);
+        });
+      }
+
+      const beatObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              activateBeat(entry.target);
+            }
+          });
+        },
+        { rootMargin: "-35% 0px -45% 0px" }
+      );
+
+      beats.forEach((beat) => beatObserver.observe(beat));
+
+      const canvas = document.getElementById("bg-canvas");
+      const ctx = canvas.getContext("2d");
+      let w = 0;
+      let h = 0;
+      const dots = [];
+      const total = 80;
+
+      function resize() {
+        w = window.innerWidth;
+        h = window.innerHeight;
+        canvas.width = w;
+        canvas.height = h;
+      }
+
+      function seed() {
+        dots.length = 0;
+        for (let i = 0; i < total; i++) {
+          dots.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            vx: -0.35 - Math.random() * 0.45,
+            vy: -0.15 - Math.random() * 0.35,
+            size: Math.random() < 0.4 ? 4 : 3,
+            alpha: 0.25 + Math.random() * 0.45
+          });
+        }
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+        for (let i = 0; i < dots.length; i++) {
+          const d = dots[i];
+          d.x += d.vx;
+          d.y += d.vy;
+
+          if (d.x < -10) d.x = w + 10;
+          if (d.x > w + 10) d.x = -10;
+          if (d.y < -10) d.y = h + 10;
+          if (d.y > h + 10) d.y = -10;
+
+          ctx.fillStyle = "rgba(255, 255, 255, " + d.alpha + ")";
+          ctx.fillRect(Math.floor(d.x), Math.floor(d.y), d.size, d.size);
+        }
+        requestAnimationFrame(render);
+      }
+
+      window.addEventListener("resize", () => {
+        resize();
+        seed();
+      });
+
+      resize();
+      seed();
+      render();
+    })();
+  </script>
+</body>
+</html>
